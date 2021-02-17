@@ -9,7 +9,8 @@ import vtkMapper          from 'vtk.js/Sources/Rendering/Core/Mapper';
 //import { FieldDataTypes } from 'vtk.js/Sources/Common/DataModel/DataSet/Constants';
 
 import controlPanel from './controller.html';
-
+import vtkHttpDataAccessHelper from 'vtk.js/Sources/IO/Core/DataAccessHelper/HttpDataAccessHelper';
+const { fetchBinary } = vtkHttpDataAccessHelper;
 //FG
 import vtkHttpDataSetReader from 'vtk.js/Sources/IO/Core/HttpDataSetReader';
 import vtkXMLPolyDataReader from 'vtk.js/Sources/IO/XML/XMLPolyDataReader';
@@ -27,51 +28,91 @@ const renderWindow = fullScreenRenderer.getRenderWindow();
 // Example code
 // ----------------------------------------------------------------------------
 
-const writerReader = vtkXMLPolyDataReader.newInstance();
-writerReader.setUrl(`protectiveWallParticle_4000.vtp`, { loadData: true }).then(() => {
-
-  //console.log(writerReader.getOutputData())
-  //console.log(writerReader.getOutputData().getPoints().get().values[2]) ;   
-  const mapper = vtkGlyph3DMapper.newInstance();
-mapper.setInputConnection(writerReader.getOutputPort(), 0);
+const mapper = vtkGlyph3DMapper.newInstance();
 const sphereSource = vtkSphereSource.newInstance();
+const writerReader = vtkXMLPolyDataReader.newInstance();
+const vtkColorMaps = vtkColorTransferFunction.vtkColorMaps;
+const preset = vtkColorMaps.getPresetByName('Inferno (matplotlib)');
+const lookupTable = vtkColorTransferFunction.newInstance();
 //sphereSource.setResolution(12);
 mapper.setInputConnection(sphereSource.getOutputPort(), 1);
 //mapper.setOrientationArray('pressure');
 mapper.setScaleArray('Radius') ; 
 mapper.setScaleMode(1); 
 mapper.setScaleFactor(2) ; 
-mapper.setScalarRange(0.0, 0.1);
 mapper.setScalarMode(1) ; 
-const vtkColorMaps = vtkColorTransferFunction.vtkColorMaps;
-console.log(vtkColorMaps)
-const preset = vtkColorMaps.getPresetByName('Inferno (matplotlib)');
-const lookupTable = vtkColorTransferFunction.newInstance();
-lookupTable.setVectorModeToMagnitude();
-console.log(preset) ; 
+lookupTable.setVectorModeToMagnitude(); 
 lookupTable.applyColorMap(preset);
 lookupTable.setMappingRange(-0.0001,0.0001);
 lookupTable.updateRange();
 mapper.setLookupTable(lookupTable);
-mapper.setColorByArrayName('Velocity');
+mapper.setColorByArrayName('Radius');
 mapper.setColorModeToMapScalars();
 mapper.setInterpolateScalarsBeforeMapping();
 mapper.setScalarModeToUsePointFieldData();
 mapper.setScalarVisibility(true);
-mapper.setScalarRange(0.0,0.0001);
-console.log(mapper.getScalarVisibility())
-//const mapper = vtkMapper.newInstance();
-//mapper.setInputConnection(filter.getOutputPort());
-console.log(mapper)
-
+mapper.setScalarRange(0.009, 0.011);
 const actor = vtkActor.newInstance();
 actor.setMapper(mapper);
 
 renderer.addActor(actor);
-renderer.resetCamera();
-renderWindow.render();
 
-});
+// fetch('res/protectiveWallParticle_100.vtu').then(data => {console.log(data);}) ; 
+// writerReader.setUrl(`res/protectiveWallParticle_100.vtu`, { loadData: true }).then(() => {
+// mapper.setInputConnection(writerReader.getOutputPort(), 0);
+// 
+// renderer.resetCamera();
+// renderWindow.render();
+// 
+// });
+
+
+
+
+// -----------------------------------------------------
+// Time handling
+//------------------------------------------------------
+let filelist = [] ; 
+
+function downloadTimeSeries() {
+  return Promise.all(
+    filelist.map((filename) => {
+        /*{
+        const reader = vtkXMLPolyDataReader.newInstance();
+        reader.setUrl(filename, { loadData: true }).then(() => {
+            return reader.getOutputPort();
+        })
+        }*/
+      //fetchBinary(`${filename}`).then((binary) => {
+        const reader = vtkXMLPolyDataReader.newInstance();
+        reader.setUrl(filename, { loadData: true })/*.then( () => {
+        //reader.parseAsArrayBuffer(binary);
+        return reader;}) ;*/
+        return reader; }
+      //})
+    )
+  );
+}
+
+const mapper2 = vtkMapper.newInstance() ;
+const actor2 = vtkActor.newInstance();
+function getwall() {
+    const reader = vtkXMLPolyDataReader.newInstance();
+    reader.setUrl('res/protectiveWallWall_0.vtu', { loadData: true }).then( () => {
+        })
+    mapper2.setInputConnection(reader.getOutputPort()) ; 
+    actor2.setMapper(mapper2);
+    renderer.addActor(actor2);
+    renderWindow.render();
+}
+
+function setVisibleDataset(ds) {
+  console.log(ds) ; 
+  mapper.setInputConnection(ds.getOutputPort(), 0);
+  //renderer.resetCamera();
+  //console.log(mapper)
+  renderWindow.render();
+}
 
 // -----------------------------------------------------------
 // UI control handling
@@ -79,18 +120,57 @@ renderWindow.render();
 
 fullScreenRenderer.addController(controlPanel);
 const runsimu = document.querySelector('.runsimu') ; 
+const resetcam = document.querySelector('.resetcam') ; 
+const timeslider = document.querySelector('.timeslider');
 //const representationSelector = document.querySelector('.representations');
 //const resolutionChange = document.querySelector('.resolution');
+let timeSeriesData = [];
 
-
+// Run a simulation
 runsimu.addEventListener('click', (e) => {
 runsimu.disabled = true; 
 runsimu.value = "wait ..." ; 
-const url='http://localhost:54321/run?Np=' + document.getElementById("Np").value + "&r=" + document.getElementById("R").value + "&h=" + document.getElementById("h").value + "&w=" + document.getElementById("w").value + "&l=" + document.getElementById("l").value + "&s=" + document.getElementById("s").value + "&t=" + document.getElementById("t").value
+filelist=[] ; 
+const maxtime = document.getElementById("t").value ; 
+const url='http://localhost:54321/run?Np=' + document.getElementById("Np").value + "&r=" + document.getElementById("R").value + "&h=" + document.getElementById("h").value + "&w=" + document.getElementById("w").value + "&l=" + document.getElementById("l").value + "&s=" + document.getElementById("s").value + "&t=" + maxtime
 
-fetch(url).then(data => {runsimu.disabled = false; runsimu.value="done"; } ) ;
+
+fetch(url).then(data => {
+    // Once the simulation is finished, create filelist
+    for (var i=0; i<maxtime*1000 ; i+=10)
+        filelist.push("res/protectiveWallParticle_"+i+".vtu") ; 
+    console.log(filelist) ; 
+    getwall() ; 
+    
+    downloadTimeSeries().then((downloadedData) => {
+        timeSeriesData = downloadedData.filter((ds) => true);
+        //timeSeriesData.sort((a, b) => getDataTimeStep(a) - getDataTimeStep(b));
+
+        console.log(timeSeriesData[10]) ; 
+        timeslider.max = filelist.length - 1 ; 
+        timeslider.value = 10;
+
+        timeSeriesData[10].loadData().then ( () =>
+        {renderer.resetCamera(); setVisibleDataset(timeSeriesData[10]); })
+        });
+    
+    
+    runsimu.disabled = false; runsimu.value="done"; 
+    }) ;
 
 }) ;  
+
+resetcam.addEventListener('click', (e) => {renderer.resetCamera(); renderWindow.render();}) ; 
+
+timeslider.addEventListener('input', (e) => {
+  const curdata = timeSeriesData[Number(e.target.value)] ;
+  curdata.loadData().then( () => 
+  { setVisibleDataset(curdata);} )
+});
+
+console.log(filelist) ; 
+
+
 
 /*
 resolutionChange.addEventListener('input', (e) => {
