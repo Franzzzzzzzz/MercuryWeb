@@ -28,7 +28,7 @@ const renderWindow = fullScreenRenderer.getRenderWindow();
 // ----------------------------------------------------------------------------
 
 const writerReader = vtkXMLPolyDataReader.newInstance();
-writerReader.setUrl(`protectiveWallParticle_4999.vtu`, { loadData: true }).then(() => {
+writerReader.setUrl(`protectiveWallParticle_4000.vtp`, { loadData: true }).then(() => {
 
   //console.log(writerReader.getOutputData())
   //console.log(writerReader.getOutputData().getPoints().get().values[2]) ;   
@@ -77,16 +77,22 @@ renderWindow.render();
 // UI control handling
 // -----------------------------------------------------------
 
-/*fullScreenRenderer.addController(controlPanel);
-const representationSelector = document.querySelector('.representations');
-const resolutionChange = document.querySelector('.resolution');
+fullScreenRenderer.addController(controlPanel);
+const runsimu = document.querySelector('.runsimu') ; 
+//const representationSelector = document.querySelector('.representations');
+//const resolutionChange = document.querySelector('.resolution');
 
-representationSelector.addEventListener('change', (e) => {
-  const newRepValue = Number(e.target.value);
-  actor.getProperty().setRepresentation(newRepValue);
-  renderWindow.render();
-});
 
+runsimu.addEventListener('click', (e) => {
+runsimu.disabled = true; 
+runsimu.value = "wait ..." ; 
+const url='http://localhost:54321/run?Np=' + document.getElementById("Np").value + "&r=" + document.getElementById("R").value + "&h=" + document.getElementById("h").value + "&w=" + document.getElementById("w").value + "&l=" + document.getElementById("l").value + "&s=" + document.getElementById("s").value + "&t=" + document.getElementById("t").value
+
+fetch(url).then(data => {runsimu.disabled = false; runsimu.value="done"; } ) ;
+
+}) ;  
+
+/*
 resolutionChange.addEventListener('input', (e) => {
   const resolution = Number(e.target.value);
   coneSource.setResolution(resolution);
