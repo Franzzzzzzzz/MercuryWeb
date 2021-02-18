@@ -1,6 +1,6 @@
 Web interface for Mercury DPM. Allows to run the ProtectiveWall Advanced Tutorial from a browser, running the simulation remotely and displaying the results locally using [vtk.js](https://kitware.github.io/vtk-js/index.html).
 
-** Installing **
+# Installing 
 
 There are quite a few steps:
 
@@ -10,13 +10,7 @@ There are quite a few steps:
 git clone https://github.com/Franzzzzzzzz/MercuryWeb.git
 cd MercuryWeb
 ```
-
-- A 'few' node modules are required. Hopefully this will install them directly:
-
-```
-sudo apt install npm
-npm install .
-```
+## Installing the back-end server (Mercury DPM server)
 
 - Download [Mercury](http://mercurydpm.org/downloads/Trunk), saving the sources in a subfolder `Mercury_src` (for the patches to be applied correctly).
 
@@ -33,7 +27,7 @@ cd ..
 - We also need a couple of files to build the server version of the ProtectiveWall:
 
 ```
-cp CppCode/ProtectiveWall_Server.cpp Server.h Mercury_src/Drivers/Tutorials/Advanced/
+cp CppServer/ProtectiveWall_Server.cpp CppServer/Server.h Mercury_src/Drivers/Tutorials/Advanced/
 ```
 
 - Now we can compile (here using 4 threads):
@@ -48,10 +42,14 @@ make fullTest -j 4
 
 `cp ./Drivers/Tutorials/Advanced/ProtectiveWall_Server ../Software`
 
+## Installing the front-end server (webkit server)
 
+- A 'few' node modules are required. Hopefully this will install them directly:
 
-
-
+```
+sudo apt install npm
+npm install .
+```
 
 
 

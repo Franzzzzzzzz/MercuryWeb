@@ -7,6 +7,7 @@
     "build": "webpack --progress --color --mode development",
     "build:release": "webpack --progress --color --mode production",
     "start": "webpack-dev-server --content-base ./dist",
+    "startserver": "webpack-dev-server --content-base ./dist --host 0.0.0.0 --port 54322",
     "commit": "git cz",
     "semantic-release": "semantic-release",
     "test": "echo \"Error: no test specified\" && exit 1"
