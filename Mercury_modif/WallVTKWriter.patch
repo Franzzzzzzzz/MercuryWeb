@@ -1,0 +1,101 @@
+--- ../../MercuryDPM/MercurySource/Kernel/VTKWriter/WallVTKWriter.cc	2021-02-18 18:01:37.807774887 +1100
++++ WallVTKWriter.cc	2021-02-18 20:41:38.720116264 +1100
+@@ -29,24 +29,19 @@
+ 
+ void WallVTKWriter::getVTKData(VTKContainer& vtk) const
+ {
+-    // set capacity of points and cells based on the previous time step
+-    // the initial values are based on the minimum, which is one triangle per wall
+-    static unsigned int capacityPoints = 3*handler_.getSize();
+-    static unsigned int capacityTriangleStrips = handler_.getSize();
++    //set capacity of points and cells based on the previous time step
++    static unsigned int capacityPoints = 0;
++    static unsigned int capacityTriangleStrips = 0;
++    
+     vtk.triangleStrips.reserve(capacityPoints);
+     vtk.points.reserve(capacityTriangleStrips);
+-
++    
+     //add all wall data to the point and cell arrays
+     for (const auto& w: handler_)
+     {
+         w->renderWall(vtk);
++        logger(DEBUG, "points: %, cells: %", vtk.points.size(), vtk.triangleStrips.size());
+     }
+-
+-//    logger(INFO, "size (capacity) of points: % (%), cells: % (%)", vtk.points.size(), capacityPoints, vtk.triangleStrips.size(), capacityTriangleStrips);
+-
+-    //store from previous time step
+-    capacityPoints = vtk.points.size();
+-    capacityTriangleStrips = vtk.triangleStrips.size();
+ }
+ 
+ void WallVTKWriter::writeVTK() const
+@@ -57,16 +52,16 @@
+     VTKContainer vtk;
+     getVTKData(vtk);
+     file << "<Piece NumberOfPoints=\"" << vtk.points.size()
+-         << "\" NumberOfCells=\"" << vtk.triangleStrips.size()
++         << "\" NumberOfPolys=\"" << vtk.triangleStrips.size()
+          << "\">\n"
+          << "<Points>\n";
+     writeVTKPoints(file, vtk);
+     file << "</Points>\n"
+-         << "<Cells>\n";
++         << "<Polys>\n";
+     writeVTKCells(file, vtk);
+-    file << "</Cells>\n"
++    file << "</Polys>\n"
+          << "</Piece>\n"
+-         << "</UnstructuredGrid>\n"
++         << "</PolyData>\n"
+          << "</VTKFile>\n";
+     file.close();
+ }
+@@ -76,7 +71,7 @@
+     file << "  <DataArray type=\"Float32\" Name=\"Position\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+     for (const Vec3D& p : vtk.points)
+     {
+-        file << '\t' << p << '\n';
++        file << "    " << p << '\n';
+     }
+     file << "  </DataArray>\n";
+ }
+@@ -86,8 +81,11 @@
+     file << "  <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+     for (const std::vector<double>& c : vtk.triangleStrips)
+     {
+-        file << '\t';
+-        for (const double& i : c) file << i << ' ';
++        file << "    ";
++        for (const double& i : c)
++        {
++            file << i << ' ';
++        }
+         file << '\n';
+     }
+     file << "  </DataArray>\n";
+@@ -96,7 +94,7 @@
+     for (const std::vector<double>& c : vtk.triangleStrips)
+     {
+         count += c.size();
+-        file << '\t' << count << '\n';
++        file << "    " << count << '\n';
+     }
+     file << "  </DataArray>\n";
+     file << "  <DataArray type=\"UInt8\"  Name=\"types\" format=\"ascii\">\n";
+@@ -105,12 +103,12 @@
+         if (c.front() == c.back())
+         {
+             //polygon
+-            file << "\t7\n";
++            file << "    7\n";
+         }
+         else
+         {
+             //triangle strips
+-            file << "\t6\n";
++            file << "    6\n";
+         }
+     }
+     file << "  </DataArray>\n";

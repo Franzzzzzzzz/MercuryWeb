@@ -1,0 +1,41 @@
+--- ../../MercuryDPM/MercurySource/Kernel/VTKWriter/ParticleVtkWriter.cc	2021-02-18 18:01:36.827720650 +1100
++++ ParticleVtkWriter.cc	2021-02-18 20:41:38.724116151 +1100
+@@ -35,10 +35,10 @@
+ #ifdef MERCURY_USE_MPI
+         if (particleMustBeWritten(p))
+         {
+-            file << '\t' << p->getPosition() << '\n';
++            file << "    " << p->getPosition() << '\n';
+         }
+ #else
+-        file << '\t' << p->getPosition() << '\n';
++        file << "    " << p->getPosition() << '\n';
+ #endif
+     
+     }
+@@ -55,10 +55,10 @@
+ #ifdef MERCURY_USE_MPI
+         if (particleMustBeWritten(p))
+         {
+-            file << '\t' << p->getIndSpecies() << '\n';
++            file << "    " << p->getIndSpecies() << '\n';
+         }
+ #else
+-        file << '\t' << p->getIndSpecies() << '\n';
++        file << "    " << p->getIndSpecies() << '\n';
+ #endif
+     }
+     file << "  </DataArray>\n";
+@@ -80,10 +80,10 @@
+ #ifdef MERCURY_USE_MPI
+                     if (particleMustBeWritten(p))
+                     {
+-                        file << '\t' << f << '\n';
++                        file << "    " << f << '\n';
+                     }
+ #else
+-                    file << '\t' << f << '\n';
++                    file << "    " << f << '\n';
+ #endif
+                 }
+             }

@@ -52,14 +52,14 @@ void WallVTKWriter::writeVTK() const
     VTKContainer vtk;
     getVTKData(vtk);
     file << "<Piece NumberOfPoints=\"" << vtk.points.size()
-         << "\" NumberOfCells=\"" << vtk.triangleStrips.size()
+         << "\" NumberOfPolys=\"" << vtk.triangleStrips.size()
          << "\">\n"
          << "<Points>\n";
     writeVTKPoints(file, vtk);
     file << "</Points>\n"
-         << "<Cells>\n";
+         << "<Polys>\n";
     writeVTKCells(file, vtk);
-    file << "</Cells>\n"
+    file << "</Polys>\n"
          << "</Piece>\n"
          << "</PolyData>\n"
          << "</VTKFile>\n";
@@ -71,7 +71,7 @@ void WallVTKWriter::writeVTKPoints(std::fstream& file, VTKContainer& vtk) const
     file << "  <DataArray type=\"Float32\" Name=\"Position\" NumberOfComponents=\"3\" format=\"ascii\">\n";
     for (const Vec3D& p : vtk.points)
     {
-        file << '    ' << p << '\n';
+        file << "    " << p << '\n';
     }
     file << "  </DataArray>\n";
 }
@@ -81,7 +81,7 @@ void WallVTKWriter::writeVTKCells(std::fstream& file, VTKContainer& vtk) const
     file << "  <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
     for (const std::vector<double>& c : vtk.triangleStrips)
     {
-        file << '    ';
+        file << "    ";
         for (const double& i : c)
         {
             file << i << ' ';
@@ -94,7 +94,7 @@ void WallVTKWriter::writeVTKCells(std::fstream& file, VTKContainer& vtk) const
     for (const std::vector<double>& c : vtk.triangleStrips)
     {
         count += c.size();
-        file << '    ' << count << '\n';
+        file << "    " << count << '\n';
     }
     file << "  </DataArray>\n";
     file << "  <DataArray type=\"UInt8\"  Name=\"types\" format=\"ascii\">\n";

@@ -1,5 +1,0 @@
-Kernel/VTKWriter/BaseVTKWriter.h
-Kernel/VTKWriter/WallVTKWriter.cc
-Kernel/WallHandler.cc
-Kernel/VTKWriter/ParticleVtkWriter.cc
-Kernel/VTKWriter/SphericalParticleVtkWriter.cc

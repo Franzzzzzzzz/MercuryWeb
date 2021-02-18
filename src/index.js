@@ -51,7 +51,7 @@ mapper.setColorModeToMapScalars();
 mapper.setInterpolateScalarsBeforeMapping();
 mapper.setScalarModeToUsePointFieldData();
 mapper.setScalarVisibility(true);
-mapper.setScalarRange(0.009, 0.011);
+//mapper.setScalarRange(0.009, 0.011);
 const actor = vtkActor.newInstance();
 actor.setMapper(mapper);
 
@@ -94,16 +94,17 @@ function downloadTimeSeries() {
   );
 }
 
-const mapper2 = vtkMapper.newInstance() ;
-const actor2 = vtkActor.newInstance();
 function getwall() {
+    const mapper2 = vtkMapper.newInstance();
+    const actor2 = vtkActor.newInstance();
     const reader = vtkXMLPolyDataReader.newInstance();
-    reader.setUrl('res/protectiveWallWall_0.vtu', { loadData: true }).then( () => {
-        })
-    mapper2.setInputConnection(reader.getOutputPort()) ; 
+    reader.setUrl('res/protectiveWallWall_0.vtu', { loadData: true });
+    reader.loadData().then( () => {
+    mapper2.setInputConnection(reader.getOutputPort(),0) ; 
     actor2.setMapper(mapper2);
     renderer.addActor(actor2);
-    renderWindow.render();
+    renderWindow.render();     
+    })
 }
 
 function setVisibleDataset(ds) {
@@ -133,11 +134,11 @@ runsimu.value = "wait ..." ;
 filelist=[] ; 
 const maxtime = document.getElementById("t").value ; 
 const url='http://localhost:54321/run?Np=' + document.getElementById("Np").value + "&r=" + document.getElementById("R").value + "&h=" + document.getElementById("h").value + "&w=" + document.getElementById("w").value + "&l=" + document.getElementById("l").value + "&s=" + document.getElementById("s").value + "&t=" + maxtime
-
+mapper.setScalarRange(0.9*document.getElementById("R").value, 1.1*document.getElementById("R").value);
 
 fetch(url).then(data => {
     // Once the simulation is finished, create filelist
-    for (var i=0; i<maxtime*1000 ; i+=10)
+    for (var i=0; i<maxtime*1000 ; i+=5)
         filelist.push("res/protectiveWallParticle_"+i+".vtu") ; 
     console.log(filelist) ; 
     getwall() ; 
@@ -155,7 +156,7 @@ fetch(url).then(data => {
         });
     
     
-    runsimu.disabled = false; runsimu.value="done"; 
+    runsimu.disabled = false; runsimu.value="Done. Run again?"; 
     }) ;
 
 }) ;  
