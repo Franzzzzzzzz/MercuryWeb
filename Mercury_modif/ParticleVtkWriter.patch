@@ -1,5 +1,5 @@
 --- ../../MercuryDPM/MercurySource/Kernel/VTKWriter/ParticleVtkWriter.cc	2021-02-18 18:01:36.827720650 +1100
-+++ ParticleVtkWriter.cc	2021-02-18 20:41:38.724116151 +1100
++++ ParticleVtkWriter.cc	2021-02-19 19:17:13.747201021 +1100
 @@ -35,10 +35,10 @@
  #ifdef MERCURY_USE_MPI
          if (particleMustBeWritten(p))

@@ -1,5 +1,5 @@
 --- ../../MercuryDPM/MercurySource/Kernel/VTKWriter/BaseVTKWriter.h	2021-02-18 18:01:37.807774887 +1100
-+++ BaseVTKWriter.h	2021-02-18 20:41:38.716116377 +1100
++++ BaseVTKWriter.h	2021-02-19 19:17:13.731201048 +1100
 @@ -113,9 +113,9 @@
  
      // write output file header

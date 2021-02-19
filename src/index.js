@@ -16,6 +16,10 @@ import vtkHttpDataSetReader from 'vtk.js/Sources/IO/Core/HttpDataSetReader';
 import vtkXMLPolyDataReader from 'vtk.js/Sources/IO/XML/XMLPolyDataReader';
 import vtkGlyph3DMapper from 'vtk.js/Sources/Rendering/Core/Glyph3DMapper';
 import vtkSphereSource from 'vtk.js/Sources/Filters/Sources/SphereSource';
+//=============================
+server="localhost:54321"
+//=============================
+
 // ----------------------------------------------------------------------------
 // Standard rendering code setup
 // ----------------------------------------------------------------------------
@@ -133,7 +137,7 @@ runsimu.disabled = true;
 runsimu.value = "wait ..." ; 
 filelist=[] ; 
 const maxtime = document.getElementById("t").value ; 
-const url='http://localhost:54321/run?Np=' + document.getElementById("Np").value + "&r=" + document.getElementById("R").value + "&h=" + document.getElementById("h").value + "&w=" + document.getElementById("w").value + "&l=" + document.getElementById("l").value + "&s=" + document.getElementById("s").value + "&t=" + maxtime
+const url='http://'+server+'/run?Np=' + document.getElementById("Np").value + "&r=" + document.getElementById("R").value + "&h=" + document.getElementById("h").value + "&w=" + document.getElementById("w").value + "&l=" + document.getElementById("l").value + "&s=" + document.getElementById("s").value + "&t=" + maxtime
 mapper.setScalarRange(0.9*document.getElementById("R").value, 1.1*document.getElementById("R").value);
 
 fetch(url).then(data => {

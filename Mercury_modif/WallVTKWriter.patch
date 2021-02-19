@@ -1,5 +1,5 @@
 --- ../../MercuryDPM/MercurySource/Kernel/VTKWriter/WallVTKWriter.cc	2021-02-18 18:01:37.807774887 +1100
-+++ WallVTKWriter.cc	2021-02-18 20:41:38.720116264 +1100
++++ WallVTKWriter.cc	2021-02-19 19:17:13.739201034 +1100
 @@ -29,24 +29,19 @@
  
  void WallVTKWriter::getVTKData(VTKContainer& vtk) const

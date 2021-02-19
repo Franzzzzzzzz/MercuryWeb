@@ -16,7 +16,7 @@ cd MercuryWeb
 
 `svn checkout https://svn.MercuryDPM.org/SourceCode/Trunk --username guest --password '' Mercury_src`
 
-- A few adjustments are required for Mercury to write vtk file in a format understood by [vtk.js](https://kitware.github.io/vtk-js/index.html). Let's apply the patches:
+- A few adjustments are required for Mercury to write vtk file in a format understood by [vtk.js](https://kitware.github.io/vtk-js/index.html). Also, the server requires the pthread library to compile, so let's apply a few patches to a few files using the supplied bash script:
 
 ```
 cd Mercury_modif
@@ -30,17 +30,19 @@ cd ..
 cp CppServer/ProtectiveWall_Server.cpp CppServer/Server.h Mercury_src/Drivers/Tutorials/Advanced/
 ```
 
-- Now we can compile (here using 4 threads):
+- Now we can compile. To speed things up we can just focus on the server compilation:
 
 ```
 mkdir Mercury_build
 cmake ../Mercury_src 
-make fullTest -j 4
+cd Drivers/Tutorials/Advanced/
+make 
+cd ../../../..
 ```
 
 - Let's get the server in a more convenient location:
 
-`cp ./Drivers/Tutorials/Advanced/ProtectiveWall_Server ../Software`
+`cp Mercury_build/Drivers/Tutorials/Advanced/ProtectiveWall_Server Software`
 
 ## Installing the front-end server (webkit server)
 
@@ -50,6 +52,11 @@ make fullTest -j 4
 sudo apt install npm
 npm install .
 ```
+
+# Running
+
+## Testing
+We can start both server locally and check if 
 
 
 
