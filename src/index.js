@@ -17,7 +17,7 @@ import vtkXMLPolyDataReader from 'vtk.js/Sources/IO/XML/XMLPolyDataReader';
 import vtkGlyph3DMapper from 'vtk.js/Sources/Rendering/Core/Glyph3DMapper';
 import vtkSphereSource from 'vtk.js/Sources/Filters/Sources/SphereSource';
 //=============================
-server="localhost:54321"
+const server="localhost:54321"
 //=============================
 
 // ----------------------------------------------------------------------------
@@ -107,7 +107,7 @@ function getwall() {
     mapper2.setInputConnection(reader.getOutputPort(),0) ; 
     actor2.setMapper(mapper2);
     renderer.addActor(actor2);
-    renderWindow.render();     
+    
     })
 }
 

@@ -56,7 +56,30 @@ npm install .
 # Running
 
 ## Testing
-We can start both server locally and check if 
+We can start both server locally and check if everything is ok. We need to run the backend server from a specific folder though:
+
+```
+npm start &
+cd dist/res
+../../Software/ProtectiveWall_Server &
+cd ../..
+```
+
+Now navigating to `http://localhost:8080/` will connect to the front-end sever, allow to change the simulation parameters, run the simulation, and display the results. When clicking on the run button, the back-end server is contacted (it can also be contacted directly from the browser at `http://localhost:54321/run?Np=50&t=...`). If everything looks good, we can deploy:
+
+## Deploy
+First, we need to adapt a variable in the javascript to fit the back-end server to be contacted for the calculation. Modify the `server` variable in the file `src/index.js` accordingly to the IP and port to contact the backend. Default port is 54321, as shown above. The front-end open port is 54322 when using the `startserver` script as shown below. To start everything:
+
+```
+npm run startserver && cd dist/res && ../../Software/ProtectiveWall_Server &&
+```
+
+but if everything is working well, we probably also want to be able to disconnect, so running all that with `nohup` is probably better. But really, a proper server deamon that would restart this programs on crash is the long term / proper solution...
+
+
+
+
+
 
 
 
