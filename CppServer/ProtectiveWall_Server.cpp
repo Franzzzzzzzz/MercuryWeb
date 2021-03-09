@@ -27,210 +27,29 @@
 */
 
 //! [AT_PW:headers]
-#include <Mercury3D.h>
-#include "Species/LinearViscoelasticSpecies.h"
-#include "Walls/InfiniteWall.h"
-#include "Walls/IntersectionOfWalls.h"
-#include "Boundaries/CubeInsertionBoundary.h"
-#include "Boundaries/CubeDeletionBoundary.h"
-
+#define __STDC_WANT_LIB_EXT1__ 1
+#include <cstdlib>
+#include <cstdio>
+#include <string>
+#include <chrono>
+#include <filesystem>
+#include <atomic>
 #include "Server.h" //FG
-//! [AT_PW:headers]
 
-//! [AT_PW:MainClass]
-class protectiveWall : public Mercury3D
-{
-public:
+#define MAXPROC 4
 
-    //! [AT_PW:Constructor]
-    protectiveWall(int Nump, Mdouble pRadius, Mdouble height, Mdouble width,Mdouble Length, Mdouble slopeAngle)
-    {
-        //! [AT_PW:globalConditions]
-        setNumParticles = Nump; //Number of particles
-        setGlobalRadius = pRadius; //Particle radius
-        setParticleHeight = height; //Height of release
-        setSlopeAngle = constants::pi / 180.0 * slopeAngle; //Slope angle
+struct Userspace {
+    enum Policy {admin=0, student=1, none=2} ; 
+    enum ProcessStatus {stopped=0, running=1} ; 
+    static const std::map <Policy, int> maxTime ;
+    Policy userpolicy = none ; 
+    ProcessStatus processstatus = stopped ; 
+    std::chrono::steady_clock::time_point starttime ; 
+    double percentcompleted=0.0 ; 
+} ; 
+const std::map <Userspace::Policy, int> Userspace::maxTime = {{Userspace::admin, 86400}, {Userspace::student, 10}, {Userspace::none, 0}} ; 
+std::atomic<int> running = 0 ; 
 
-        setName("protectiveWall"); //Output file name
-        setWallsWriteVTK(FileType::MULTIPLE_FILES); //For visualization
-        setParticlesWriteVTK(true); //For visualization
-        setGravity(Vec3D(0.0, 0.0, -9.81)); //Set gravity
-
-        Mdouble Hipo = Length/cos(setSlopeAngle); //Slope length
-
-        setXMax(Length); //Boundary length
-        setYMax(width); //Boundary width
-        setZMax(Hipo*sin(setSlopeAngle)); //Boundary height using slope length
-        //! [AT_PW:globalConditions]
-
-        //! [AT_PW:slopeSpecies] //Slope and walls have different properties compared to particles
-        slopeSpecies = speciesHandler.copyAndAddObject(LinearViscoelasticSpecies());
-        slopeSpecies->setDensity(2500.0); //set the species density
-        slopeSpecies->setStiffness(20058.5);//set the spring stiffness.
-        slopeSpecies->setDissipation(0.01); //set the dissipation.
-        //! [AT_PW:slopeSpecies]
-
-        //! [AT_PW:particleSpecies]//Particles have their own species
-        particleSpecies = speciesHandler.copyAndAddObject(LinearViscoelasticSpecies());
-        particleSpecies->setDensity(2500.0); //set the species density
-        particleSpecies->setStiffness(258.5);//set the spring stiffness.
-        particleSpecies->setDissipation(0.5); //set the dissipation.
-        //! [AT_PW:particleSpecies]
-
-        speciesHandler.getMixedObject(0,1)->mixAll(slopeSpecies,slopeSpecies); //Particle-wall interactions
-
-        //! [AT_PW:particles] //To insert the particles
-        insb = new CubeInsertionBoundary;
-        SphericalParticle particles;
-        particles.setSpecies(particleSpecies);
-
-        insb->set(
-                &particles,
-                1,
-                Vec3D(0.9*getXMax(),  0.45*getYMax(), getZMax() + 0.97*setParticleHeight), //Minimum position
-                Vec3D(getXMax(), 0.55*getYMax(), getZMax() + setParticleHeight), //Maximum position
-                Vec3D(0, 0, 0), //Minimum velocity
-                Vec3D(0, 0, 0), //Maximum velocity
-                pRadius*0.98, //Minimum particle radius
-                pRadius*1.1 //Maximum particle radius
-        );
-        insb = boundaryHandler.copyAndAddObject(insb);
-        //! [AT_PW:particles]
-
-        //To delete particles
-        delb = new DeletionBoundary;
-        delb->set(Vec3D(-1,0,0), getXMin());
-        delb =  boundaryHandler.copyAndAddObject(delb);
-    }
-    //! [AT_PW:Constructor]
-
-    //! [AT_PW:MemberFunctions]
-
-    void setupInitialConditions() override
-    {
-        //! [AT_PW:walls]
-        InfiniteWall slope,lateralwall1, lateralwall2, lateralwall3;
-
-        //! [AT_PW:slope] //Defining slope
-        slope.setSpecies(slopeSpecies);
-        slope.setPosition(Vec3D(getXMin(),getYMin(),getZMin()));
-        slope.setOrientation(Vec3D(sin(setSlopeAngle),0,-cos(setSlopeAngle)));
-        wallHandler.copyAndAddObject(slope);
-        //! [AT_PW:slope]
-
-        //! [AT_PW:lateralWall] //Defining walls
-        lateralwall1.setSpecies(slopeSpecies);
-        lateralwall1.set(Vec3D(0.0, 1.0, 0.0), Vec3D(0.0,getYMax(),0.0));
-        wallHandler.copyAndAddObject(lateralwall1);
-
-        lateralwall2.setSpecies(slopeSpecies);
-        lateralwall2.set(Vec3D(0.0, -1.0, 0.0), Vec3D(0.0,getYMin(),0.0));
-        wallHandler.copyAndAddObject(lateralwall2);
-
-        IntersectionOfWalls roarWall, proctWall;
-        //Rear wall.
-        roarWall.addObject(Vec3D(1.0, 0.0, 0.0), Vec3D(getXMax(), 0.0, 0.0));
-        roarWall.addObject(Vec3D(0.0, 0.0, -1.0), Vec3D(getXMax(), 0.0, getZMax()+setParticleHeight));
-        wallHandler.copyAndAddObject(roarWall);
-
-        //! [AT_PW:lateralWall]
-
-        //! [AT_PW:protectiveWall]
-        //Protective wall
-        heightProtWall = setGlobalRadius*10.0;
-        proctWall.setSpecies(slopeSpecies);
-        proctWall.addObject(Vec3D(-1.0, 0.0, 0.0), Vec3D(getXMin(), 0.0, 0.0));
-        proctWall.addObject(Vec3D(0.0, 0.0, -1.0), Vec3D(getXMin(), 0.0, heightProtWall));
-        wallHandler.copyAndAddObject(proctWall);
-        //! [AT_PW:protectiveWall]
-
-        //! [AT_PW:walls]
-    }
-
-    void actionsAfterTimeStep() override {
-
-        vol_inserted = insb->getVolumeOfParticlesInserted();
-        partDel = delb->getNumberOfParticlesDeleted();
-
-        //Specific number of particles
-        setVolume = 4.0/3.0 * constants::pi * (setGlobalRadius*setGlobalRadius*setGlobalRadius);
-        setVolume *= setNumParticles;
-
-        //Stop inserting particles
-        if(vol_inserted  >= setVolume && !removed_insb){
-            boundaryHandler.removeObject(insb->getIndex());
-            removed_insb = true;
-            setVolume = vol_inserted;
-        }
-
-        //Wall force and pressure
-        wallForce = fabs(wallHandler.getObject(4)->getForce().X);
-        wallPressure = wallForce / (getYMax()*heightProtWall);
-    }
-
-    //Criterion to stop the simulation, otherwise the simulation stops at maxTime.
-    bool continueSolve() const override
-    {
-        static unsigned int counter = 0;
-        if (++counter>100)
-        {
-            counter=0;
-            if (getKineticEnergy()<0.001*getElasticEnergy())
-                return false;
-        }
-        return true;
-    }
-
-    //Print varaibles in the console/terminal
-    void printTime()const override
-    {
-        std::cout << "t=" << std::setprecision(3) << std::left<< getTime()
-                  << ", tmax=" << std::setprecision(3) << std::left<< getTimeMax()
-                  << ", # Particles inserted=" << std::setprecision(3) << std::left << setNumParticles - partDel
-                  << ", # Particles deleted=" << std::setprecision(3) << std::left << partDel
-                  << ", Volume inserted=" << std::setprecision(3) << std::left << std::setw(6)<< vol_inserted
-                  << ", WallForce=" << std::setprecision(3) << std::left << std::setw(6) << wallForce
-                  << ", WallPressure=" << std::setprecision(3) << std::left << std::setw(6) << wallPressure
-                  << std::endl;
-    }
-
-    //Write variables in the fstat file
-    void writeFstatHeader(std::ostream &os) const override {
-        os<< getTime() //Current time
-          << " " << getTimeMax() //MaxTime
-          << " " << setNumParticles - partDel //Particles inserted
-          << " " << partDel //Partilcles deleted
-          << " " << vol_inserted //Volume inserted
-          << " " << wallForce //Wall force
-          << " " <<  wallPressure //Wall pressure
-          << std::endl;
-    }
-
-    //! [AT_PW:MemberFunctions]
-
-    //! [AT_PW:PrivateVariables]
-private:
-    Mdouble setGlobalRadius = 1.0; //By default
-    Mdouble setParticleHeight = 0.1; //By default
-    Mdouble setSlopeAngle = 20.0; //By default
-    Mdouble heightProtWall = 1.0; //By default
-
-    CubeInsertionBoundary* insb;
-    DeletionBoundary* delb;
-    int partDel = 0;
-    int setNumParticles;
-    Mdouble wallForce = 0.0;
-    Mdouble wallPressure = 0.0;
-    Mdouble vol_inserted = 0.0;
-    Mdouble setVolume = 0.0;
-    bool removed_insb = false;
-
-    LinearViscoelasticSpecies* slopeSpecies;
-    LinearViscoelasticSpecies* particleSpecies;
-    //! [AT_PW:PrivateVariables]
-};
-
-//! [AT_PW:MainClass]
 
 template <class T>  T sanitize (const std::map <std::string, std::string> & params, const std::string p, const T min, const T max, const T defaut)
 {
@@ -255,36 +74,121 @@ int main(int argc, char* argv[])
     // std::cout << "Write in the terminal after the compilation'./protectiveWall -Np 500 -r 0.01 -h 0.1 -w 0.25 -l 1.0 -s 15.0 -t 20.0' to run the program" << std::endl;
     
     using namespace httplib;
+    std::map <std::string, Userspace> user ;
     Server svr;
+    
+    // Get userlist
+    FILE * userfile ; 
+    userfile = fopen("../userlist.txt", "r") ; 
+    if (userfile == NULL) 
+    {
+        printf("Userfile not found. You will not be able to run anything\n") ;
+    }
+    else
+    {
+        char username[255] ; int p ;
+        while (!feof(userfile))
+        {
+            fscanf(userfile, "%s %d\n", username, &p);
+            user[username] ; // Using the operator[] to fill up the user with default constructors
+            user[username].userpolicy = static_cast<Userspace::Policy>(p) ; 
+        }
+        
+    }
+    
+    // Setup server
     svr.set_base_dir(".");
     
     svr.Get(R"(/run)", [&](const Request& req, Response& res) {
-        int Nump=sanitize<int>(req.params, "Np", 1,100, 50) ; 
-        Mdouble pRadius = sanitize<Mdouble>(req.params,"r", 0.005,0.5, 0.01) ; //0.01 [m]
-        Mdouble height  = sanitize<Mdouble>(req.params,"h", 0.05, 0.5 , 0.1); //0.1 [m]
-        Mdouble width   = sanitize<Mdouble>(req.params,"w", 0.1, 0.5, 0.25);  //0.25 [m]
-        Mdouble length  = sanitize<Mdouble>(req.params,"l", 0.5, 10, 1.0); //1.0 [m]
-        Mdouble slopeAngle = sanitize<Mdouble>(req.params,"s", 1., 90., 15.0); //15 grades
-        Mdouble simTime = sanitize<Mdouble>(req.params, "t", 1, 100., 5.0); //15 grades
+        try 
+        {
+            std::string username=req.params.at("username") ;
+            auto policy = user.at(username).userpolicy ;
+            switch (policy) {
+                case Userspace::admin : // Falling down
+                case Userspace::student : break ; 
+                default: res.status=403 ; // Forbiden ; 
+                         return ; 
+            }
+            
+            if (user[username].processstatus == Userspace::running)
+            {
+                printf("[%s] Process already running. Discarding the request.\n", username.c_str()) ; 
+                res.status=409 ;
+                return ; 
+            }
+            
+            if (running >= MAXPROC)
+            {
+                printf("[%s] Cannot run new simulations, already %d running.\n", username.c_str(), MAXPROC) ; 
+                res.status=503 ;
+                return ; 
+            }
+
+            std::filesystem::create_directory(username.c_str()) ;
+            
+            int Nump=sanitize<int>(req.params, "Np", 1,100, 50) ; 
+            double pRadius = sanitize<double>(req.params,"r", 0.005,0.5, 0.01) ; //0.01 [m]
+            double height  = sanitize<double>(req.params,"h", 0.05, 0.5 , 0.1); //0.1 [m]
+            double width   = sanitize<double>(req.params,"w", 0.1, 0.5, 0.25);  //0.25 [m]
+            double length  = sanitize<double>(req.params,"l", 0.5, 10, 1.0); //1.0 [m]
+            double slopeAngle = sanitize<double>(req.params,"s", 1., 90., 15.0); //15 grades
+            double simTime = sanitize<double>(req.params, "t", 1, 100., 5.0); //15 grades
+            
+            char commande[1001] ; 
+            snprintf(commande,1000, "cd %s ; ../../Software/ProtectiveWall -Np %d -r %g -h %g -w %g -l %g -s %g -t %g", username.c_str(), Nump, pRadius, height, width, length, slopeAngle, simTime);
+            
+            //=========================
+            FILE *fp; int status;
+            char line[10000] ; 
+            user[username].processstatus = Userspace::running ; 
+            user[username].starttime = std::chrono::steady_clock::now();
+            running++ ; 
+            fp = popen (commande, "r") ; 
+            if (fp==NULL) {printf("Error: cannot open pipe\n") ; throw ; }
+            float tcur=0, tmax=simTime ; 
+            while (!feof(fp))
+            {
+                fscanf(fp, "%[^\n]%*c", line) ; 
+                sscanf(line, "t=%g, tmax=%g", &tcur, &tmax) ; 
+                user[username].percentcompleted = tcur/tmax*100. ; 
+                auto runningtime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now()-user[username].starttime).count() ;
+                printf("[%s] %lds %g\n",username.c_str(), runningtime, user[username].percentcompleted) ; 
+                if (runningtime > Userspace::maxTime.at(user[username].userpolicy)) 
+                {
+                    printf("[%s] Force stopped after authorised time elapsed.\n", username.c_str()) ; 
+                    res.status = 408 ; 
+                    break ; 
+                }
+            }
+            status = pclose(fp);
+            user[username].processstatus = Userspace::stopped ; 
+            running -- ; 
+            if (running<0) running=0 ; // Should never happen, but just to be on the safe side
+        }
+        catch (const std::out_of_range& e)
+        {
+            printf("User not found\n") ; 
+            res.status=403 ; 
+        }
+        catch (...)
+        {
+         printf("Some error occured") ; 
+         res.status=400 ; 
+        }
+    }); // End /run
+    
+    svr.Get(R"(/status)", [&](const Request& req, Response& res) {
+        try 
+        {
+            std::string username=req.params.at("username") ;
+            std::string response="" ; 
+            response = "{\"username\":\""+username+"\",\"runstate\":"+std::to_string(static_cast<int>(user[username].processstatus))+",\"completion\":"+std::to_string(user[username].percentcompleted)+"}" ; 
+            
+            res.set_content(response.c_str(), response.size(), "application/json");
+        }
+        catch(...) {}
         
-        //! [AT_PW:setUp]
-        /*int Nump = helpers::readFromCommandLine(argc,argv,"-Np",50); //50 particles
-        Mdouble pRadius = helpers::readFromCommandLine(argc,argv,"-r",0.01); //0.01 [m]
-        Mdouble height = helpers::readFromCommandLine(argc,argv,"-h",0.1); //0.1 [m]
-        Mdouble width = helpers::readFromCommandLine(argc,argv,"-w",0.25);  //0.25 [m]
-        Mdouble length = helpers::readFromCommandLine(argc,argv,"-l",1.0); //1.0 [m]
-        Mdouble slopeAngle = helpers::readFromCommandLine(argc,argv,"-s",15.0); //15 grades */
-
-        protectiveWall problem(Nump,pRadius,height,width,length,slopeAngle); //Object
-
-        //Mdouble simTime = helpers::readFromCommandLine(argc,argv,"-t",5.0); // 5.0 [s]
-        problem.setTimeMax(simTime);
-        //! [AT_PW:setUp]
-
-        problem.setSaveCount(10);
-        problem.setTimeStep(0.005 / 50.0); // (collision time)/50.0
-        problem.removeOldFiles();
-        problem.solve();
     });
     
     
