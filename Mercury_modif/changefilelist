@@ -2,4 +2,3 @@ Kernel/VTKWriter/BaseVTKWriter.h
 Kernel/VTKWriter/WallVTKWriter.cc
 Kernel/VTKWriter/ParticleVtkWriter.cc
 Kernel/VTKWriter/SphericalParticleVtkWriter.cc
-Drivers/Tutorials/Advanced/CMakeLists.txt

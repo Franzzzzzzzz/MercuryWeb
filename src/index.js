@@ -98,9 +98,9 @@ function downloadTimeSeries() {
   );
 }
 
+const mapper2 = vtkMapper.newInstance();
+const actor2 = vtkActor.newInstance();
 function getwall(username) {
-    const mapper2 = vtkMapper.newInstance();
-    const actor2 = vtkActor.newInstance();
     const reader = vtkXMLPolyDataReader.newInstance();
     reader.setUrl(username+'/protectiveWallWall_0.vtu', { loadData: true });
     reader.loadData().then( () => {
@@ -112,15 +112,10 @@ function getwall(username) {
 }
 
 function setVisibleDataset(ds) {
-  console.log(ds) ; 
   mapper.setInputConnection(ds.getOutputPort(), 0);
   //renderer.resetCamera();
   //console.log(mapper)
   renderWindow.render();
-}
-
-function checkstatus () {
- console.log("Hello") ;    
 }
 
 // -----------------------------------------------------------
@@ -129,8 +124,6 @@ function checkstatus () {
 
 fullScreenRenderer.addController(controlPanel);
 const runsimu = document.querySelector('.runsimu') ; 
-const resetcam = document.querySelector('.resetcam') ; 
-const timeslider = document.querySelector('.timeslider');
 //const representationSelector = document.querySelector('.representations');
 //const resolutionChange = document.querySelector('.resolution');
 let timeSeriesData = [];
@@ -162,20 +155,18 @@ var intervalID = window.setInterval(() => {
 
 fetch(url).then(data => {
     // Once the simulation is finished, create filelist
-    console.log(data.status) ; 
     
     if (data.status== 200) // Everything worked properly
     {
         for (var i=0; i<maxtime*1000 ; i+=5)
             filelist.push(username+"/protectiveWallParticle_"+i+".vtu") ; 
-        console.log(filelist) ; 
+        //console.log(filelist) ; 
         getwall(username) ; 
         
         downloadTimeSeries().then((downloadedData) => {
             timeSeriesData = downloadedData.filter((ds) => true);
             //timeSeriesData.sort((a, b) => getDataTimeStep(a) - getDataTimeStep(b));
 
-            console.log(timeSeriesData[10]) ; 
             timeslider.max = filelist.length - 1 ; 
             timeslider.value = 10;
 
@@ -220,6 +211,10 @@ fetch(url).then(data => {
     
 }) ;  
 
+const resetcam = document.querySelector('.resetcam') ; 
+var timeslider = document.querySelector('.timeslider');
+const playpause = document.querySelector('.playpause') ; 
+
 resetcam.addEventListener('click', (e) => {renderer.resetCamera(); renderWindow.render();}) ; 
 
 timeslider.addEventListener('input', (e) => {
@@ -228,7 +223,28 @@ timeslider.addEventListener('input', (e) => {
   { setVisibleDataset(curdata);} )
 });
 
-console.log(filelist) ; 
+var toggleisrunning = false ; 
+var intervalID ;
+playpause.addEventListener('click', (e) => {
+    if (toggleisrunning)
+    {
+        document.getElementById('playpause').textContent='▶' ; 
+        toggleisrunning = false ; 
+    }
+    else
+    {
+        toggleisrunning=true ;
+        document.getElementById('playpause').textContent='⏸'
+        setTimeout(function run() {
+            if (Number(timeslider.value) < Number(timeslider.max)) timeslider.value=Number(timeslider.value)+1; 
+            else timeslider.value=0
+            const curdata2 = timeSeriesData[Number(timeslider.value)] ;
+            curdata2.loadData().then( () => 
+            { setVisibleDataset(curdata2);} ) ;
+            if (toggleisrunning) setTimeout(run, 10);
+            }, 10);
+    }
+}) ;
 
 
 
