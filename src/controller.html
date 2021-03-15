@@ -13,7 +13,7 @@
       <input class='resolution' type='range' min='4' max='80' value='6' />
     </td>
   </tr>-->
-<tr><td><label for="Np">Username:</label></td><td><input type="text" id="username" value="fgui4612"></td></tr>
+<tr><td><label for="username">Username:</label></td><td><input type="text" id="username" value=""></td></tr>
 <tr><td><label for="Np">Number of grains:</label></td><td><input type="number" id="Np" name="Np" min="1" max="100" value="50"></td></tr>
 <tr><td><label for="R">Radius:</label></td><td><input type="number" id="R" name="R" min="0.005" max="0.05" value="0.01"></td></tr>
 <tr><td><label for="h">Height:</label></td><td><input type="number" id="h" name="h" min="0.05" max="0.5" value="0.1"></td></tr>
@@ -24,4 +24,6 @@
 <tr><td align="center"><input type="button" id="run" value="Run" class="runsimu"/></td><td align="center"><input type="button" id="run" value="Reset camera" class="resetcam"/></td></tr>
 <tr><td><progress id="progression" value="0" max="100" hidden="true"> 0% </progress></td><td></td></tr>
 <tr><td><label for="timeslider">Time</label></td><td><span class="playpause" id="playpause">▶</span><input class="timeslider" type="range" min="0" max="0" step="1"></td></tr>
+<tr><td><input type="button" id="DLWall" value="Download wall info" class="DLWallInfo"/></td><td><input type="button" id="DLWallContacts" value="Download final wall contacts" class="DLWallContacts"/></td></tr>
+<tr><td><input type="button" id="LoadPrevious" value="Reload session" class="LoadPrevious"/></td><td></td></tr>
 </table>

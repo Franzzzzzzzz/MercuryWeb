@@ -1,5 +1,5 @@
 Mercury_src
 Mercury_build
 node_modules
-dist/res
+dist/*/
 userlist.txt

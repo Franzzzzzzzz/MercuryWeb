@@ -32,9 +32,13 @@
 #include <cstdio>
 #include <string>
 #include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <atomic>
-#include "Server.h" //FG
+#include <pugixml.hpp>
+#include <iostream>
+#include <sstream>
+#include "Server.h"
 
 #define MAXPROC 4
 
@@ -138,6 +142,15 @@ int main(int argc, char* argv[])
             char commande[1001] ; 
             snprintf(commande,1000, "cd %s ; ../../Software/ProtectiveWall -Np %d -r %g -h %g -w %g -l %g -s %g -t %g", username.c_str(), Nump, pRadius, height, width, length, slopeAngle, simTime);
             
+            //------------------------
+            FILE * saveinfo ; std::string infopath = username ; 
+            infopath += "/LastRun.txt" ; 
+            saveinfo = fopen(infopath.c_str(), "w"); 
+            if (saveinfo != NULL) 
+            {
+                fprintf(saveinfo, "%d %g %g %g %g %g %g\n", Nump, pRadius, height, width, length, slopeAngle, simTime) ;
+                fclose(saveinfo) ; 
+            }
             //=========================
             FILE *fp; int status;
             char line[10000] ; 
@@ -162,6 +175,14 @@ int main(int argc, char* argv[])
                 }
             }
             status = pclose(fp);
+            
+            saveinfo = fopen(infopath.c_str(), "a");
+            if (saveinfo != NULL) 
+            {
+                fprintf(saveinfo, "%g %g\n", tcur, tmax) ;
+                fclose(saveinfo) ; 
+            }
+            
             user[username].processstatus = Userspace::stopped ; 
             running -- ; 
             if (running<0) running=0 ; // Should never happen, but just to be on the safe side
@@ -191,7 +212,148 @@ int main(int argc, char* argv[])
         
     });
     
+    svr.Get(R"(/downloadwall)", [&](const Request& req, Response& res) {
+        try 
+        {
+            std::string username=req.params.at("username") ;
+            FILE * in, *out ; std::string input, output ;
+            char letter ; 
+            input = username + "/protectiveWall.fstat" ;
+            output = username + "/ProtectiveWallStat.txt" ;
+            in=fopen(input.c_str(), "r") ; 
+            out=fopen(output.c_str(), "w") ; 
+            if (in==NULL || out==NULL)
+            {
+                res.status=404 ; 
+                return ; 
+            }
+            fprintf(out, "Time MaxTime NParticles NDeleted WallForceX WallForceY WallForceZ\n") ;
+            while (!feof(in))
+            {
+             fscanf(in, "%c", &letter) ; 
+             fprintf(out, "%c", letter) ; 
+            }
+            fclose(in) ; fclose(out) ;
+        }
+        catch(...) {}
+    });
     
+    svr.Get(R"(/getwallcontact)", [&](const Request& req, Response& res) {
+        try 
+        {
+            int DS = 1000 ;  // WARNING Hardcoded downsampling
+            
+            std::string username=req.params.at("username") ;
+            
+            std::ifstream lastrun ; 
+            std::string path = username + "/LastRun.txt" ; 
+            lastrun.open(path.c_str(), std::ios_base::in) ; 
+            if (!lastrun.is_open())
+            {
+                res.status=404 ; 
+                return ; 
+            }
+            int Nump ; double pRadius, height, width, length, slopeAngle, simTime ; 
+            double tfinal, ttotal ; 
+            lastrun >> Nump >> pRadius >> height >> width >> length >> slopeAngle >> simTime ;
+            lastrun >> tfinal >> ttotal ; 
+            if (lastrun.eof())
+            {
+                printf("This was an unfinished simulation") ; fflush(stdout) ;
+                res.status=404 ; 
+                return ; 
+            }
+            
+            pugi::xml_document doc;
+            path = username + "/protectiveWallInteraction_" + std::to_string(static_cast<int>(floor(tfinal*DS)))+".vtu" ; 
+            printf("%s\n", path.c_str()) ; fflush(stdout) ; 
+            pugi::xml_parse_result result = doc.load_file(path.c_str());
+            auto points = doc.child("VTKFile").child("PolyData").child("Piece").child("Points").child("DataArray") ; 
+            auto numpoints = doc.child("VTKFile").child("PolyData").child("Piece").attribute("NumberOfPoints").as_int() ; 
+            
+            std::istringstream textcontent(points.child_value()) ;
+            std::vector<double> locations, forces ; 
+            double tmp ; 
+            for (int i=0 ; i<numpoints*3 ; i++)
+            {
+                textcontent >> tmp ; 
+                locations.push_back(tmp) ; 
+            }
+            
+            points = doc.child("VTKFile").child("PolyData").child("Piece").child("PointData") ;
+            points = points.find_child_by_attribute("DataArray", "Name", "Force") ; 
+            std::istringstream textcontent2(points.child_value()) ;
+            for (int i=0 ; i<numpoints*3 ; i++)
+            {
+                textcontent2 >> tmp ; 
+                forces.push_back(tmp) ; 
+            }
+            
+            path = username + "/WallContacts.txt" ; 
+            FILE * out ; 
+            out = fopen(path.c_str(), "w") ; 
+            if (out==NULL)
+            {
+                res.status=507 ; 
+                return ; 
+            }
+            fprintf(out, "X Y Z ForceX ForceY ForceZ\n") ; 
+            for (int i=0 ; i<numpoints ; i+=3)
+                if (locations[i]<0.5*pRadius)
+                    fprintf(out, "%g %g %g %g %g %g\n", locations[i], locations[i+1], locations[i+2], forces[i], forces[i+1], forces[i+2]) ;  
+            fclose(out) ; 
+        }
+        catch(...) {printf("An error occured") ; fflush(stdout) ; }
+    });
+    
+    svr.Get(R"(/loadprevious)", [&](const Request& req, Response& res) {
+        try 
+        {
+            std::string username=req.params.at("username") ;
+            
+            std::ifstream lastrun ; 
+            std::string path = username + "/LastRun.txt" ; 
+            lastrun.open(path.c_str(), std::ios_base::in) ; 
+            if (!lastrun.is_open())
+            {
+                printf("File does not exist\n") ; 
+                res.status=404 ; 
+                return ; 
+            }
+            int Nump ; double pRadius, height, width, length, slopeAngle, simTime ; 
+            double tfinal, ttotal ; 
+            lastrun >> Nump >> pRadius >> height >> width >> length >> slopeAngle >> simTime ;
+            lastrun >> tfinal >> ttotal ; 
+            
+            std::string response="" ; 
+            response = "{\"username\":\""+username
+                    +"\",\"Nump\":"+std::to_string(static_cast<int>(Nump))
+                    +",\"r\":"+std::to_string(static_cast<float>(pRadius))
+                    +",\"h\":"+std::to_string(static_cast<float>(height))
+                    +",\"w\":"+std::to_string(static_cast<float>(width))
+                    +",\"l\":"+std::to_string(static_cast<float>(length))
+                    +",\"s\":"+std::to_string(static_cast<float>(slopeAngle))
+                    +",\"t\":"+std::to_string(static_cast<float>(simTime))
+                    +",\"tfinal\":"+std::to_string(static_cast<float>(tfinal))
+                    +"}" ; 
+            
+            res.set_content(response.c_str(), response.size(), "application/json");
+            if (lastrun.eof())
+            {
+                printf("This was an unfinished simulation") ; fflush(stdout) ;
+                res.status=425 ; 
+                return ; 
+            }
+            lastrun.close() ; 
+        }
+        catch (const std::out_of_range& e)
+        {
+            printf("User not found\n") ; 
+            res.status=403 ; 
+        }
+        catch(...) {res.status=500 ; printf("An error occured") ; fflush(stdout) ; }
+    });
+
     svr.listen("0.0.0.0", 54321);
     
     return 0;

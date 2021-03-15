@@ -18,6 +18,7 @@ import vtkGlyph3DMapper from 'vtk.js/Sources/Rendering/Core/Glyph3DMapper';
 import vtkSphereSource from 'vtk.js/Sources/Filters/Sources/SphereSource';
 //=============================
 const server="localhost:54321"
+const DSTIME = 1000
 //=============================
 
 // ----------------------------------------------------------------------------
@@ -158,7 +159,8 @@ fetch(url).then(data => {
     
     if (data.status== 200) // Everything worked properly
     {
-        for (var i=0; i<maxtime*1000 ; i+=5)
+        filelist =[] ; 
+        for (var i=0; i<maxtime*DSTIME ; i+=5)
             filelist.push(username+"/protectiveWallParticle_"+i+".vtu") ; 
         //console.log(filelist) ; 
         getwall(username) ; 
@@ -214,6 +216,9 @@ fetch(url).then(data => {
 const resetcam = document.querySelector('.resetcam') ; 
 var timeslider = document.querySelector('.timeslider');
 const playpause = document.querySelector('.playpause') ; 
+const dlwallinfo = document.querySelector('.DLWallInfo') ; 
+const dlwallcontacts = document.querySelector('.DLWallContacts') ; 
+const loadprevious = document.querySelector('.LoadPrevious') ; 
 
 resetcam.addEventListener('click', (e) => {renderer.resetCamera(); renderWindow.render();}) ; 
 
@@ -246,38 +251,67 @@ playpause.addEventListener('click', (e) => {
     }
 }) ;
 
+//var download = require('download-file')
+
+var FileSaver = require('file-saver');
 
 
-/*
-resolutionChange.addEventListener('input', (e) => {
-  const resolution = Number(e.target.value);
-  coneSource.setResolution(resolution);
-  renderWindow.render();
-});*/
+dlwallinfo.addEventListener('click', (e) => {
+    username=document.getElementById("username").value ;
+    fetch('http://'+server+'/downloadwall?username='+username).then(data => {
+    FileSaver.saveAs(username+"/ProtectiveWallStat.txt", "ProtectiveWallStat.txt");   
+    });
+}) ; 
 
+dlwallcontacts.addEventListener('click', (e) => {
+    username=document.getElementById("username").value ;
+    fetch('http://'+server+'/getwallcontact?username='+username).then(data => {
+    FileSaver.saveAs(username+"/WallContacts.txt", "WallContacts.txt");   
+    });
+}) ; 
 
+loadprevious.addEventListener('click', (e) => {
+    username=document.getElementById("username").value ;
+    fetch('http://'+server+'/loadprevious?username='+username).then(data => {
+        console.log(data) ; 
+        
+        if (data.status== 200 || data.status == 425)
+        {
+            data.json().then(res => {
+            document.getElementById("Np").value = res.Nump ; 
+            document.getElementById("R").value = res.r ; 
+            document.getElementById("h").value = res.h; 
+            document.getElementById("w").value = res.w; 
+            document.getElementById("l").value = res.l; 
+            document.getElementById("s").value = res.s; 
+            document.getElementById("t").value = res.t; 
+             
+            if (data.status == 425)
+                alert("The simulation did not finished, only the parameters will be reloaded") ; 
+            else
+            {
+                for (var i=0; i<res.t*DSTIME ; i+=5)
+                filelist.push(username+"/protectiveWallParticle_"+i+".vtu") ; 
+                console.log(filelist) ; 
+                getwall(username) ; 
+        
+                downloadTimeSeries().then((downloadedData) => {
+                timeSeriesData = downloadedData.filter((ds) => true);
 
+                timeslider.max = filelist.length - 1 ; 
+                timeslider.value = 10;
 
-
-/*reader.setUrl(`protectiveWallParticle_780.vtu`, { loadData: true }).then(() => {
-  //const fileContents = writer.write(reader.getOutputData());
-    console.log(reader.getOutputData()); 
-    
-  // Try to read it back.
-  const textEncoder = new TextEncoder();
-  writerReader.parseAsArrayBuffer(textEncoder.encode(fileContents));
-  renderer.resetCamera();
-  renderWindow.render();
-
-  const blob = new Blob([fileContents], { type: 'text/plain' });
-  const a = window.document.createElement('a');
-  a.href = window.URL.createObjectURL(blob, { type: 'text/plain' });
-  a.download = 'cow.vtp';
-  a.text = 'Download';
-  a.style.position = 'absolute';
-  a.style.left = '50%';
-  a.style.bottom = '10px';
-  document.body.appendChild(a);
-  a.style.background = 'white';
-  a.style.padding = '5px';
-});*/
+                timeSeriesData[10].loadData().then ( () =>
+                {renderer.resetCamera(); setVisibleDataset(timeSeriesData[10]); })
+                });
+            }
+            }) ;
+        }
+        else if (data.status == 403)
+            alert("An error occured [403]: probably an unknown username.") ;
+        else if (data.status == 404)
+            alert("An error occured [404]: no status file from previous simulation found. You should run the simulation again.") ;
+        else 
+            alert("Unknown error "+ data.status) ; 
+    }) ; 
+}) ; 
