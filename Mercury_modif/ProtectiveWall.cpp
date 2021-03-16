@@ -58,10 +58,13 @@ public:
         setGravity(Vec3D(0.0, 0.0, -9.81)); //Set gravity
 
         Mdouble Hipo = Length/cos(setSlopeAngle); //Slope length
-
         setXMax(Length); //Boundary length
         setYMax(width); //Boundary width
-        setZMax(Hipo*sin(setSlopeAngle)); //Boundary height using slope length
+        
+        Mdouble  Zmaxslope = Hipo*sin(setSlopeAngle) ;
+        
+        setZMax(Zmaxslope+20); //Boundary height using slope length
+
         
         //! [AT_PW:globalConditions]
 
@@ -81,8 +84,8 @@ public:
         insb->set(
                 &particles,
                 1,
-                Vec3D(0.9*getXMax(),  getYMin(), getZMax() ), //Minimum position
-                Vec3D(getXMax(), getYMax(), getZMax() + 2), //Maximum position
+                Vec3D(0.9*getXMax(),  getYMin(), Zmaxslope ), //Minimum position
+                Vec3D(getXMax(), getYMax(), Zmaxslope + 2), //Maximum position
                 Vec3D(0, 0, 0), //Minimum velocity
                 Vec3D(0, 0, 0), //Maximum velocity
                 pRadius*0.98, //Minimum particle radius
@@ -100,6 +103,7 @@ public:
         delb = new DeletionBoundary;
         delb->set(Vec3D(-1,0,0), getXMin());
         delb =  boundaryHandler.copyAndAddObject(delb);
+        
     }
     //! [AT_PW:Constructor]
 
@@ -127,19 +131,19 @@ public:
         lateralwall2.setSpecies(particleSpecies);
         lateralwall2.set(Vec3D(0.0, -1.0, 0.0), Vec3D(0.0,getYMin()-10,0.0));
         wallHandler.copyAndAddObject(lateralwall2);
-
+        */
         IntersectionOfWalls roarWall, proctWall;
         //Rear wall.
         roarWall.setSpecies(particleSpecies);
         roarWall.addObject(Vec3D(1.0, 0.0, 0.0), Vec3D(getXMax(), 0.0, 0.0));
-        roarWall.addObject(Vec3D(0.0, 0.0, -1.0), Vec3D(getXMax(), 0.0, getZMax()+setParticleHeight));
-        wallHandler.copyAndAddObject(roarWall);*/
+        roarWall.addObject(Vec3D(0.0, 0.0, -1.0), Vec3D(getXMax(), 0.0, getZMax()));
+        wallHandler.copyAndAddObject(roarWall);
 
         //! [AT_PW:lateralWall]
 
         //! [AT_PW:protectiveWall]
         //Protective wall
-        IntersectionOfWalls proctWall ; 
+        //IntersectionOfWalls proctWall ; 
         heightProtWall = setWallHeight;
         proctWall.setSpecies(particleSpecies);
         proctWall.addObject(Vec3D(-1.0, 0.0, 0.0), Vec3D(getXMin(), 0.0, 0.0));
@@ -167,9 +171,9 @@ public:
         }
 
         //Wall force and pressure
-        wallForceX = fabs(wallHandler.getObject(0)->getForce().X);
-        wallForceY = fabs(wallHandler.getObject(0)->getForce().Y);
-        wallForceZ = fabs(wallHandler.getObject(0)->getForce().Z);
+        wallForceX = fabs(wallHandler.getObject(2)->getForce().X);
+        wallForceY = fabs(wallHandler.getObject(2)->getForce().Y);
+        wallForceZ = fabs(wallHandler.getObject(2)->getForce().Z);
         wallPressure = wallForceX / (getYMax()*heightProtWall);
     }
 
@@ -247,7 +251,7 @@ int main(int argc, char* argv[])
 
     //! [AT_PW:setUp]
     int Nump = helpers::readFromCommandLine(argc,argv,"-Np",500); //50 particles
-    Mdouble pRadius = helpers::readFromCommandLine(argc,argv,"-r",0.1); //0.01 [m]
+    Mdouble pRadius = helpers::readFromCommandLine(argc,argv,"-r",0.15); //0.01 [m]
     Mdouble height = helpers::readFromCommandLine(argc,argv,"-h",1.5); //0.1 [m]
     Mdouble width = helpers::readFromCommandLine(argc,argv,"-w",1.);  //0.25 [m]
     Mdouble length = helpers::readFromCommandLine(argc,argv,"-l",10.); //1.0 [m]
@@ -259,7 +263,6 @@ int main(int argc, char* argv[])
     Mdouble simTime = helpers::readFromCommandLine(argc,argv,"-t",5.0); // 5.0 [s]
     problem.setTimeMax(simTime);
     //! [AT_PW:setUp]
-
     problem.setSaveCount(1000);
     problem.setTimeStep(0.00001); // (collision time)/50.0
     problem.removeOldFiles();
