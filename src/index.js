@@ -18,7 +18,7 @@ import vtkGlyph3DMapper from 'vtk.js/Sources/Rendering/Core/Glyph3DMapper';
 import vtkSphereSource from 'vtk.js/Sources/Filters/Sources/SphereSource';
 //=============================
 const server="localhost:54321"
-const DSTIME = 1000
+const DSTIME = 100
 //=============================
 
 // ----------------------------------------------------------------------------
@@ -160,9 +160,9 @@ fetch(url).then(data => {
     if (data.status== 200) // Everything worked properly
     {
         filelist =[] ; 
-        for (var i=0; i<maxtime*DSTIME ; i+=5)
+        for (var i=0; i<maxtime*DSTIME ; i+=1)
             filelist.push(username+"/protectiveWallParticle_"+i+".vtu") ; 
-        //console.log(filelist) ; 
+        console.log(filelist) ; 
         getwall(username) ; 
         
         downloadTimeSeries().then((downloadedData) => {
@@ -175,6 +175,8 @@ fetch(url).then(data => {
             timeSeriesData[10].loadData().then ( () =>
             {renderer.resetCamera(); setVisibleDataset(timeSeriesData[10]); })
             });
+        document.getElementById("DLWallContacts").disabled=false ;
+        document.getElementById("DLWall").disabled=false ;
         runsimu.disabled = false; runsimu.value="Done. Run again?"; 
     }
     else if (data.status==400)
@@ -194,8 +196,14 @@ fetch(url).then(data => {
     }
     else if (data.status==409)
     {
-        alert("Error 409: you already seem to have a simulation running. You need to wait.") ; 
-        runsimu.disabled = false; runsimu.value="Run"; 
+        var res=confirm("Error 409: you already seem to have a simulation running. You should wait.\nWarning: if you click cancel, your simulation will be stopped!") ;
+        
+        if (res==false)
+        {
+            fetch('http://'+server+'/kill?username='+username) ;
+            runsimu.disabled = false; runsimu.value="Run"; 
+        }
+        return ; // skip over the clearInterval
     }
     else if (data.status==503)
     {
@@ -304,6 +312,9 @@ loadprevious.addEventListener('click', (e) => {
                 timeSeriesData[10].loadData().then ( () =>
                 {renderer.resetCamera(); setVisibleDataset(timeSeriesData[10]); })
                 });
+                
+                document.getElementById("DLWallContacts").disabled=false ;
+                document.getElementById("DLWall").disabled=false ;
             }
             }) ;
         }

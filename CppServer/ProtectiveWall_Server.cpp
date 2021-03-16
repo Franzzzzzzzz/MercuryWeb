@@ -50,6 +50,7 @@ struct Userspace {
     ProcessStatus processstatus = stopped ; 
     std::chrono::steady_clock::time_point starttime ; 
     double percentcompleted=0.0 ; 
+    bool killsignal = false ;
 } ; 
 const std::map <Userspace::Policy, int> Userspace::maxTime = {{Userspace::admin, 86400}, {Userspace::student, 10}, {Userspace::none, 0}} ; 
 std::atomic<int> running = 0 ; 
@@ -131,16 +132,18 @@ int main(int argc, char* argv[])
 
             std::filesystem::create_directory(username.c_str()) ;
             
-            int Nump=sanitize<int>(req.params, "Np", 1,100, 50) ; 
-            double pRadius = sanitize<double>(req.params,"r", 0.005,0.5, 0.01) ; //0.01 [m]
-            double height  = sanitize<double>(req.params,"h", 0.05, 0.5 , 0.1); //0.1 [m]
-            double width   = sanitize<double>(req.params,"w", 0.1, 0.5, 0.25);  //0.25 [m]
-            double length  = sanitize<double>(req.params,"l", 0.5, 10, 1.0); //1.0 [m]
-            double slopeAngle = sanitize<double>(req.params,"s", 1., 90., 15.0); //15 grades
-            double simTime = sanitize<double>(req.params, "t", 1, 100., 5.0); //15 grades
+            int Nump=sanitize<int>(req.params, "Np", 1,1000, 50) ; 
+            double pRadius = sanitize<double>(req.params,"r", 0.01,0.5, 0.2) ; //0.01 [m]
+            double height  = sanitize<double>(req.params,"h", 0.05, 5 , 1.); //0.1 [m]
+            double width   = sanitize<double>(req.params,"w", 0.5, 20, 1.);  //0.25 [m]
+            double length  = sanitize<double>(req.params,"l", 1, 20, 10.); //1.0 [m]
+            double slopeAngle = sanitize<double>(req.params,"s", 0, 50, 10.0); //15 grades
+            double simTime = sanitize<double>(req.params, "t", 1, 1000., 10.); //15 grades
             
             char commande[1001] ; 
             snprintf(commande,1000, "cd %s ; ../../Software/ProtectiveWall -Np %d -r %g -h %g -w %g -l %g -s %g -t %g", username.c_str(), Nump, pRadius, height, width, length, slopeAngle, simTime);
+            
+            printf("%s\n", commande) ; 
             
             //------------------------
             FILE * saveinfo ; std::string infopath = username ; 
@@ -156,11 +159,12 @@ int main(int argc, char* argv[])
             char line[10000] ; 
             user[username].processstatus = Userspace::running ; 
             user[username].starttime = std::chrono::steady_clock::now();
+            user[username].killsignal = false ; 
             running++ ; 
             fp = popen (commande, "r") ; 
             if (fp==NULL) {printf("Error: cannot open pipe\n") ; throw ; }
             float tcur=0, tmax=simTime ; 
-            while (!feof(fp))
+            while (!feof(fp) && user[username].killsignal==false)
             {
                 fscanf(fp, "%[^\n]%*c", line) ; 
                 sscanf(line, "t=%g, tmax=%g", &tcur, &tmax) ; 
@@ -174,7 +178,11 @@ int main(int argc, char* argv[])
                     break ; 
                 }
             }
+            if (user[username].killsignal==true) printf("[%s] the simulation was killed remotely. %d .\n", username.c_str(), static_cast<int>(user[username].processstatus)) ; 
             status = pclose(fp);
+            user[username].processstatus = Userspace::stopped ; 
+            running -- ; 
+            if (running<0) running=0 ; // Should never happen, but just to be on the safe side
             
             saveinfo = fopen(infopath.c_str(), "a");
             if (saveinfo != NULL) 
@@ -183,9 +191,6 @@ int main(int argc, char* argv[])
                 fclose(saveinfo) ; 
             }
             
-            user[username].processstatus = Userspace::stopped ; 
-            running -- ; 
-            if (running<0) running=0 ; // Should never happen, but just to be on the safe side
         }
         catch (const std::out_of_range& e)
         {
@@ -194,10 +199,19 @@ int main(int argc, char* argv[])
         }
         catch (...)
         {
-         printf("Some error occured") ; 
+         printf("Some error occured") ; fflush(stdout) ; 
          res.status=400 ; 
         }
     }); // End /run
+    
+    svr.Get(R"(/kill)", [&](const Request& req, Response& res) {
+        try 
+        {
+            std::string username=req.params.at("username") ;
+            user[username].killsignal=true ;
+        }
+        catch(...) {} ; 
+    }) ; 
     
     svr.Get(R"(/status)", [&](const Request& req, Response& res) {
         try 
@@ -211,6 +225,7 @@ int main(int argc, char* argv[])
         catch(...) {}
         
     });
+    
     
     svr.Get(R"(/downloadwall)", [&](const Request& req, Response& res) {
         try 
@@ -241,7 +256,7 @@ int main(int argc, char* argv[])
     svr.Get(R"(/getwallcontact)", [&](const Request& req, Response& res) {
         try 
         {
-            int DS = 1000 ;  // WARNING Hardcoded downsampling
+            int DS = 100 ;  // WARNING Hardcoded downsampling
             
             std::string username=req.params.at("username") ;
             
@@ -266,7 +281,7 @@ int main(int argc, char* argv[])
             
             pugi::xml_document doc;
             path = username + "/protectiveWallInteraction_" + std::to_string(static_cast<int>(floor(tfinal*DS)))+".vtu" ; 
-            printf("%s\n", path.c_str()) ; fflush(stdout) ; 
+            printf("%g %s\n", tfinal, path.c_str()) ; fflush(stdout) ; 
             pugi::xml_parse_result result = doc.load_file(path.c_str());
             auto points = doc.child("VTKFile").child("PolyData").child("Piece").child("Points").child("DataArray") ; 
             auto numpoints = doc.child("VTKFile").child("PolyData").child("Piece").attribute("NumberOfPoints").as_int() ; 
@@ -298,7 +313,7 @@ int main(int argc, char* argv[])
                 return ; 
             }
             fprintf(out, "X Y Z ForceX ForceY ForceZ\n") ; 
-            for (int i=0 ; i<numpoints ; i+=3)
+            for (int i=0 ; i<numpoints*3 ; i+=3)
                 if (locations[i]<0.5*pRadius)
                     fprintf(out, "%g %g %g %g %g %g\n", locations[i], locations[i+1], locations[i+2], forces[i], forces[i+1], forces[i+2]) ;  
             fclose(out) ; 
