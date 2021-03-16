@@ -51,11 +51,74 @@ struct Userspace {
     std::chrono::steady_clock::time_point starttime ; 
     double percentcompleted=0.0 ; 
     bool killsignal = false ;
+    int pid=0 ; 
 } ; 
 const std::map <Userspace::Policy, int> Userspace::maxTime = {{Userspace::admin, 86400}, {Userspace::student, 10}, {Userspace::none, 0}} ; 
 std::atomic<int> running = 0 ; 
+//-------------------------------------------------------------
+#define READ   0
+#define WRITE  1
+FILE * popen2(int & pid, std::string username, 
+              int Nump, double pRadius, double height, double width, double length, double slopeAngle, double simTime) 
+{
+    pid_t child_pid;
+    int fd[2];
+    pipe(fd);
 
+    if((child_pid = fork()) == -1)
+    {
+        perror("fork");
+        exit(1);
+    }
 
+    /* child process */
+    if (child_pid == 0)
+    {
+        close(fd[READ]);    //Close the READ end of the pipe since the child's fd is write-only
+        dup2(fd[WRITE], 1); //Redirect stdout to pipe
+        chdir(username.c_str()); 
+        char buffer[7][20] ; 
+        setpgid(child_pid, child_pid); //Needed so negative PIDs can kill children of /bin/sh
+        sprintf(buffer[0], "%d", Nump) ; 
+        sprintf(buffer[1], "%g", pRadius) ; 
+        sprintf(buffer[2], "%g", height) ; 
+        sprintf(buffer[3], "%g", width) ; 
+        sprintf(buffer[4], "%g", length) ; 
+        sprintf(buffer[5], "%g", slopeAngle) ; 
+        sprintf(buffer[6], "%g", simTime) ; 
+        execl("../../Software/ProtectiveWall", "../../Software/ProtectiveWall", 
+              "-Np",buffer[0], 
+              "-r", buffer[1], 
+              "-h", buffer[2],
+              "-w", buffer[3], 
+              "-l", buffer[4], 
+              "-s", buffer[5], 
+              "-t", buffer[6], NULL);
+        exit(0);
+    }
+    else
+    {
+            close(fd[WRITE]); //Close the WRITE end of the pipe since parent's fd is read-only
+    }
+    pid = child_pid;
+    return fdopen(fd[READ], "r");
+}
+//------------------------------
+/*int pclose2(FILE * fp, pid_t pid)
+{
+    int stat;
+
+    fclose(fp);
+    while (waitpid(pid, &stat, 0) == -1)
+        if (errno != EINTR)
+        {
+            stat = -1;
+            break;
+        }
+    return stat;
+}*/
+
+//------------------------------------------------------------------
 template <class T>  T sanitize (const std::map <std::string, std::string> & params, const std::string p, const T min, const T max, const T defaut)
 {
     std::string valuestr; 
@@ -71,13 +134,9 @@ template <class T>  T sanitize (const std::map <std::string, std::string> & para
     return value ;
 }
 
-
-//! [AT_PW:Mainfunction]
+//========================================================
 int main(int argc, char* argv[])
 {
-    //Helper
-    // std::cout << "Write in the terminal after the compilation'./protectiveWall -Np 500 -r 0.01 -h 0.1 -w 0.25 -l 1.0 -s 15.0 -t 20.0' to run the program" << std::endl;
-    
     using namespace httplib;
     std::map <std::string, Userspace> user ;
     Server svr;
@@ -161,8 +220,10 @@ int main(int argc, char* argv[])
             user[username].starttime = std::chrono::steady_clock::now();
             user[username].killsignal = false ; 
             running++ ; 
-            fp = popen (commande, "r") ; 
+            fp = popen2 (user[username].pid, username, Nump, pRadius, height, width, length, slopeAngle, simTime) ; 
             if (fp==NULL) {printf("Error: cannot open pipe\n") ; throw ; }
+            printf("[%s] PID %d", username.c_str(), user[username].pid) ; 
+            
             float tcur=0, tmax=simTime ; 
             while (!feof(fp) && user[username].killsignal==false)
             {
@@ -209,6 +270,7 @@ int main(int argc, char* argv[])
         {
             std::string username=req.params.at("username") ;
             user[username].killsignal=true ;
+            if (user[username].pid>1) kill(user[username].pid, SIGTERM) ; 
         }
         catch(...) {} ; 
     }) ; 

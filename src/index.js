@@ -135,7 +135,7 @@ runsimu.addEventListener('click', (e) => {
 runsimu.value = "wait ..." ; 
 filelist=[] ; 
 const maxtime = document.getElementById("t").value ; 
-username=document.getElementById("username").value ;
+const username=document.getElementById("username").value ;
 if (username=="")
 {
     alert("A username is required (typically your unikey)") ; 
@@ -196,13 +196,14 @@ fetch(url).then(data => {
     }
     else if (data.status==409)
     {
-        var res=confirm("Error 409: you already seem to have a simulation running. You should wait.\nWarning: if you click cancel, your simulation will be stopped!") ;
+        alert("Error 409: you already seem to have a simulation running. You should wait.\nWarning: if you click cancel, your simulation will be stopped!") ;
+        /*var res=confirm
         
         if (res==false)
         {
             fetch('http://'+server+'/kill?username='+username) ;
             runsimu.disabled = false; runsimu.value="Run"; 
-        }
+        }*/
         return ; // skip over the clearInterval
     }
     else if (data.status==503)
@@ -265,21 +266,21 @@ var FileSaver = require('file-saver');
 
 
 dlwallinfo.addEventListener('click', (e) => {
-    username=document.getElementById("username").value ;
+    const username=document.getElementById("username").value ;
     fetch('http://'+server+'/downloadwall?username='+username).then(data => {
     FileSaver.saveAs(username+"/ProtectiveWallStat.txt", "ProtectiveWallStat.txt");   
     });
 }) ; 
 
 dlwallcontacts.addEventListener('click', (e) => {
-    username=document.getElementById("username").value ;
+    const username=document.getElementById("username").value ;
     fetch('http://'+server+'/getwallcontact?username='+username).then(data => {
     FileSaver.saveAs(username+"/WallContacts.txt", "WallContacts.txt");   
     });
 }) ; 
 
 loadprevious.addEventListener('click', (e) => {
-    username=document.getElementById("username").value ;
+    const username=document.getElementById("username").value ;
     fetch('http://'+server+'/loadprevious?username='+username).then(data => {
         console.log(data) ; 
         
@@ -298,6 +299,7 @@ loadprevious.addEventListener('click', (e) => {
                 alert("The simulation did not finished, only the parameters will be reloaded") ; 
             else
             {
+                mapper.setScalarRange(0.9*document.getElementById("R").value, 1.1*document.getElementById("R").value);
                 for (var i=0; i<res.t*DSTIME ; i+=5)
                 filelist.push(username+"/protectiveWallParticle_"+i+".vtu") ; 
                 console.log(filelist) ; 
