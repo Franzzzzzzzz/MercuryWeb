@@ -16,6 +16,8 @@ import vtkHttpDataSetReader from 'vtk.js/Sources/IO/Core/HttpDataSetReader';
 import vtkXMLPolyDataReader from 'vtk.js/Sources/IO/XML/XMLPolyDataReader';
 import vtkGlyph3DMapper from 'vtk.js/Sources/Rendering/Core/Glyph3DMapper';
 import vtkSphereSource from 'vtk.js/Sources/Filters/Sources/SphereSource';
+
+import img from './mercury_logo_small.png';
 //=============================
 const server="localhost:54321"
 const DSTIME = 100
@@ -124,6 +126,7 @@ function setVisibleDataset(ds) {
 // -----------------------------------------------------------
 
 fullScreenRenderer.addController(controlPanel);
+
 const runsimu = document.querySelector('.runsimu') ; 
 //const representationSelector = document.querySelector('.representations');
 //const resolutionChange = document.querySelector('.resolution');

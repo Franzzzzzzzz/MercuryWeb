@@ -18,6 +18,11 @@ module.exports = {
   module: {
     rules: [
         { test: /\.html$/, loader: 'html-loader' },
+	{ test: /\.(png|jpe?g|gif)$/i,
+        use: [
+          {
+            loader: 'file-loader',
+          }]}
     ].concat(vtkRules),
   },
   resolve: {
