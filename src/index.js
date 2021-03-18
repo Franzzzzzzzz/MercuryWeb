@@ -126,6 +126,10 @@ function setVisibleDataset(ds) {
 // -----------------------------------------------------------
 
 fullScreenRenderer.addController(controlPanel);
+const queryString = window.location.search;
+const allargs = new URLSearchParams(queryString);
+document.getElementById("username").value=allargs.get('username')
+
 
 const runsimu = document.querySelector('.runsimu') ; 
 //const representationSelector = document.querySelector('.representations');
@@ -199,14 +203,12 @@ fetch(url).then(data => {
     }
     else if (data.status==409)
     {
-        alert("Error 409: you already seem to have a simulation running. You should wait.\nWarning: if you click cancel, your simulation will be stopped!") ;
-        /*var res=confirm
-        
+        var res=confirm("Error 409: you already seem to have a simulation running. You should wait.\nWarning: if you click 'Cancel', your simulation will be stopped!") ;
         if (res==false)
         {
             fetch('http://'+server+'/kill?username='+username) ;
             runsimu.disabled = false; runsimu.value="Run"; 
-        }*/
+        }
         return ; // skip over the clearInterval
     }
     else if (data.status==503)

@@ -34,6 +34,8 @@
 #include "Boundaries/CubeInsertionBoundary.h"
 #include "Boundaries/CubeDeletionBoundary.h"
 #include "Boundaries/PeriodicBoundary.h"
+
+#include <unistd.h>
 //! [AT_PW:headers]
 
 //! [AT_PW:MainClass]
@@ -246,6 +248,8 @@ private:
 //! [AT_PW:Mainfunction]
 int main(int argc, char* argv[])
 {
+    std::cout << getpid() << std::endl ; 
+    
     //Helper
     std::cout << "Write in the terminal after the compilation'./protectiveWall -Np 500 -r 0.01 -h 0.1 -w 0.25 -l 1.0 -s 15.0 -t 20.0' to run the program" << std::endl;
 
